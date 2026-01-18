@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nugget's Angle Quest: V38 Detailed Steps</title>
+    <style>
+        :root {
+            --bg-color: #f7f1e3;
+            --wood: #2c3e50;
+            --panel-bg: #fff;
+            --accent: #d35400;
+            --gold: #f1c40f;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #header { width: 100%; max-width: 1100px; display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        h1 { margin: 0; color: var(--wood); font-size: 1.6rem; }
+
+        .level-select { display: flex; gap: 5px; background: white; padding: 5px; border-radius: 8px; border: 2px solid var(--wood); }
+        .lvl-btn { border: none; background: transparent; padding: 5px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; color: #7f8c8d; }
+        .lvl-btn.active { background: var(--accent); color: white; }
+
+        #game-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+            flex-grow: 1;
+            height: 0;
+            position: relative;
+        }
+
+        #canvas-wrapper {
+            position: relative;
+            background: white;
+            border: 4px solid var(--wood);
+            border-radius: 8px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+        }
+        canvas { width: 100%; height: 100%; cursor: crosshair; display: block; }
+        #canvas-wrapper.locked { cursor: wait; }
+
+        #sidebar {
+            background: var(--panel-bg);
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            display: flex; flex-direction: column;
+            overflow: hidden; 
+            padding: 10px;
+            position: relative;
+        }
+
+        .scroll-area { flex-grow: 1; overflow-y: auto; }
+
+        #score-panel {
+            background: var(--wood);
+            color: var(--gold);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            border: 2px solid #1a252f;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .cat-btn {
+            background: #ecf0f1; border: none; width: 100%; padding: 12px;
+            margin-top: 8px; text-align: left; font-weight: bold; color: var(--wood);
+            cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between;
+            border-bottom: 2px solid #bdc3c7;
+        }
+        .cat-btn.active { background: var(--wood); color: white; border-bottom: 2px solid #1a252f; }
+        .cat-btn.hidden { display: none; }
+        
+        .rule-container { display: none; padding: 8px 5px; background: #f7f9fa; }
+        .rule-container.show { display: flex; flex-direction: column; gap: 6px; }
+
+        .rule-btn {
+            background: white; border: 1px solid #bdc3c7; padding: 10px;
+            border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem;
+            transition: transform 0.1s;
+        }
+        .rule-btn:hover { border-color: var(--wood); transform: translateX(2px); }
+        .rule-btn.selected { 
+            background: var(--accent); color: white; border-color: #a04000;
+            font-weight: bold; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        #poly-config { display: none; margin-top: 10px; padding: 10px; background: #ffeaa7; border-radius: 6px; justify-content: space-between; align-items: center; }
+        #poly-config.show { display: flex; }
+        #controls { margin-top: 10px; display: flex; gap: 10px; padding-top: 10px; border-top: 1px solid #eee; }
+        .ctrl-btn { flex: 1; padding: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-new { background: #27ae60; }
+        .btn-reset { background: #7f8c8d; }
+
+        #nugget-zone {
+            margin-top: auto; padding-top: 15px; display: flex; flex-direction: column;
+            align-items: center; border-top: 2px solid #eee; background: #fafafa; border-radius: 0 0 6px 6px;
+        }
+        .bubble {
+            background: white; border: 2px solid var(--wood); padding: 10px; border-radius: 10px;
+            margin-bottom: 5px; font-weight: bold; color: var(--wood); box-shadow: 2px 2px 0px rgba(0,0,0,0.1); 
+            text-align: center; width: 90%; font-size: 0.95rem; min-height: 48px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #nugget-img { width: 100px; height: auto; transition: transform 0.2s; }
+        .shake { animation: shake 0.4s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+        /* Modal & Print */
+        #modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(44, 62, 80, 0.85);
+            display: none; justify-content: center; align-items: center; z-index: 100;
+            border-radius: 8px;
+        }
+        .modal-box {
+            background: white; padding: 30px; border-radius: 12px;
+            text-align: center; width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 4px solid var(--wood);
+        }
+        .modal-input { width: 80%; padding: 10px; font-size: 1.1rem; border: 2px solid #ccc; border-radius: 4px; margin: 15px 0; }
+        
+        #certificate-view { display: none; width: 100%; height: 100%; overflow-y: auto; padding: 10px; box-sizing: border-box; flex-direction: column; align-items: center; gap:10px; }
+        .cert-paper {
+            background: #fffdf5; width: 100%; max-width: 700px; 
+            border: 8px double var(--wood); padding: 30px; 
+            text-align: center; position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            color: #2c3e50; box-sizing: border-box;
+        }
+        .cert-title { font-family: 'Georgia', serif; font-size: 2.2rem; color: var(--wood); margin-bottom: 10px; border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 10px; }
+        .cert-body { font-size: 1.1rem; line-height: 1.5; margin: 20px 0; }
+        .cert-name { font-family: 'Georgia', serif; font-weight: bold; font-size: 1.6rem; color: var(--accent); text-decoration: underline; }
+        .cert-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; }
+        .cert-sig { text-align: center; border-top: 2px solid var(--wood); width: 220px; position: relative; padding-top: 0; margin-top: 30px; }
+        .sig-content { position: relative; top: -25px; background: #fffdf5; padding: 0 10px; font-weight: bold; font-size: 1.1rem; color: var(--wood); }
+        .paw-print { font-size: 24px; color: var(--wood); opacity: 0.7; transform: rotate(15deg); display: inline-block; }
+        .print-controls { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-print { background: #2980b9; padding: 10px 20px; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; height: auto; }
+            #sidebar, #header, #controls, .print-controls { display: none !important; }
+            #game-layout { display: block; max-width: 100%; border: none; }
+            #canvas-wrapper { border: none; box-shadow: none; height: auto; display: block; padding: 0; }
+            #certificate-view { display: block !important; padding: 0; overflow: visible; align-items: flex-start; }
+            .cert-paper { border: 5px double black; box-shadow: none; margin: 0 auto; width: 100%; max-width: 700px; }
+            @page { margin: 1cm; size: portrait; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <h1>🐹 Nugget's Angle Quest</h1>
+        <div class="level-select">
+            <button class="lvl-btn active" id="btn-lvl1" onclick="setLevel(1)">Lvl 1</button>
+            <button class="lvl-btn" id="btn-lvl2" onclick="setLevel(2)">Lvl 2 (Iso)</button>
+            <button class="lvl-btn" id="btn-lvl3" onclick="setLevel(3)">Lvl 3 (Circle)</button>
+        </div>
+    </div>
+
+    <div id="game-layout">
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="modal-overlay">
+                <div class="modal-box">
+                    <h2>🎉 Challenge Complete! 🎉</h2>
+                    <p>Nugget has collected all the treats!</p>
+                    <input type="text" id="player-name" class="modal-input" placeholder="Enter your name" maxlength="25">
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button class="ctrl-btn btn-new" onclick="claimCertificate()">Claim Certificate</button>
+                        <button class="ctrl-btn btn-reset" onclick="generatePuzzle()">New Puzzle</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="certificate-view">
+                <div class="cert-paper">
+                    <div class="cert-title">Certificate of Achievement</div>
+                    <div class="cert-body">
+                        This certifies that<br>
+                        <span class="cert-name" id="cert-name-display">Name</span><br>
+                        helped Nugget to find all <strong id="cert-treats">0</strong> missing angles using geometric rules at <strong id="cert-level">Level 1</strong>.
+                    </div>
+                    <div style="margin: 15px;">
+                        <img id="cert-nugget" src="Nugget.png" width="100" style="border-radius:50%; border:3px solid #eee;">
+                    </div>
+                    <div class="cert-footer">
+                        <div style="text-align: left; font-size: 0.9rem; color: #555;">
+                            <strong>Skills Used:</strong><br>
+                            <span id="cert-skills">...</span>
+                        </div>
+                        <div class="cert-sig">
+                            <span class="sig-content"><span class="paw-print">🐾</span> Nugget <span class="paw-print">🐾</span></span><br>
+                            <small>Chief Angle Officer</small>
+                        </div>
+                    </div>
+                    <div class="cert-meta" id="cert-date">Date: </div>
+                </div>
+                <div class="print-controls">
+                    <button class="btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+                    <button class="ctrl-btn btn-new" onclick="generatePuzzle()">Start New Puzzle</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="sidebar">
+            <div class="scroll-area">
+                <div id="score-panel">
+                    <span>Target:</span>
+                    <span id="score-display">0 / 0 🌰</span>
+                </div>
+                <div style="padding: 5px; font-size: 0.85rem; color: #7f8c8d;">
+                    <strong>Instructions:</strong><br>
+                    1. Click a Nut (Target).<br>
+                    2. Select a Rule.<br>
+                    3. Click <strong>Input Angles</strong>.
+                </div>
+
+                <button class="cat-btn" id="cat-points" onclick="toggleCat('c1')">Points & Lines ▼</button>
+                <div id="c1" class="rule-container">
+                    <button class="rule-btn" onclick="setRule('vert')">Vertically Opposite (X)</button>
+                    <button class="rule-btn" onclick="setRule('line')">Angles on a Line (180°)</button>
+                    <button class="rule-btn" onclick="setRule('point')">Angles at a Point (360°)</button>
+                </div>
+
+                <button class="cat-btn" id="cat-parallel" onclick="toggleCat('c2')">Parallel Lines ▼</button>
+                <div id="c2" class="rule-container">
+                    <button class="rule-btn" onclick="setRule('corr')">Corresponding (F)</button>
+                    <button class="rule-btn" onclick="setRule('alt')">Alternate Interior (Z)</button>
+                    <button class="rule-btn" onclick="setRule('coint')">Co-Interior (C)</button>
+                </div>
+
+                <button class="cat-btn" id="cat-poly" onclick="toggleCat('c3')">Polygons ▼</button>
+                <div id="c3" class="rule-container">
+                    <button class="rule-btn" onclick="setRule('tri')">Triangle Sum (180°)</button>
+                    <button class="rule-btn" onclick="setRule('quad')">Quadrilateral Sum (360°)</button>
+                    <button class="rule-btn" onclick="setRule('poly')">General Polygon</button>
+                    <button class="rule-btn iso-rule" id="btn-iso-base" onclick="setRule('iso_base')">Iso: Base Angles (Equal)</button>
+                    <button class="rule-btn iso-rule" id="btn-iso-apex" onclick="setRule('iso_apex')">Iso: Apex → Base ((180-A)/2)</button>
+                </div>
+
+                <button class="cat-btn circle-rule" id="cat-circle" onclick="toggleCat('c4')">Circles (Lvl 3) ▼</button>
+                <div id="c4" class="rule-container">
+                    <button class="rule-btn" onclick="setRule('rad_tan')">Radius ⊥ Tangent (90°)</button>
+                    <button class="rule-btn" onclick="setRule('semicircle')">Angle in Semicircle (90°)</button>
+                    <button class="rule-btn" onclick="setRule('cyclic')">Cyclic Quad (Sum 180°)</button>
+                    <button class="rule-btn" onclick="setRule('center_circ')">Center vs Circumference</button>
+                </div>
+
+                <div id="poly-config">
+                    <span style="font-weight:bold; color:#d35400;">Sides (n):</span>
+                    <input type="number" id="poly-n" value="5" min="3" max="10" style="width:50px; padding:5px;">
+                </div>
+
+                <div id="controls">
+                    <button class="ctrl-btn btn-new" onclick="generatePuzzle()">New Puzzle</button>
+                    <button class="ctrl-btn btn-reset" onclick="resetPuzzle()">Reset</button>
+                </div>
+            </div>
+
+            <div id="nugget-zone">
+                <div id="msg-bubble" class="bubble">Click a Hazelnut to start!</div>
+                <img id="nugget-img" src="Nugget.png" onerror="this.style.display='none'; document.getElementById('emoji').style.display='block'">
+                <div id="emoji" style="display:none; font-size: 60px;">🐹</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/** NUGGET ENGINE V38 - DETAILED MATH STEPS */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const bubble = document.getElementById('msg-bubble');
+const wrapper = document.getElementById('canvas-wrapper');
+const polyConfig = document.getElementById('poly-config');
+const modal = document.getElementById('modal-overlay');
+const certView = document.getElementById('certificate-view');
+const nameInput = document.getElementById('player-name');
+const scoreDisplay = document.getElementById('score-display');
+
+const MARGIN = 50;
+let state = {
+    level: 1,
+    rect: {}, lines: [], intersections: [], 
+    selection: { target: null, rule: null, evidence: [] },
+    locked: false,
+    totalTreats: 0,
+    collected: 0,
+    gameActive: true,
+    isoData: null,
+    circleData: null,
+    subType: '' 
+};
+
+const RULE_TEXT = {
+    'vert': "Vertically opposite angles are equal.",
+    'line': "Angles on a straight line add to 180°.",
+    'point': "Angles around a point add to 360°.",
+    'corr': "Corresponding angles (F-shape) are equal.",
+    'alt': "Alternate interior angles (Z-shape) are equal.",
+    'coint': "Co-interior angles (C-shape) add to 180°.",
+    'tri': "Angles inside a triangle add to 180°.",
+    'iso_base': "Base angles of Isosceles are equal (x = y).",
+    'iso_apex': "Base Angle = (180° - Apex) ÷ 2.",
+    'quad': "Angles inside a quadrilateral add to 360°.",
+    'poly': "Interior angles add to (n-2) × 180°.",
+    'rad_tan': "Radius meets Tangent at 90°.",
+    'semicircle': "Angle in a Semicircle is 90°.",
+    'cyclic': "Opposite angles in Cyclic Quad sum to 180°.",
+    'center_circ': "Angle at Center = 2 × Angle at Circumference."
+};
+
+function resize() {
+    canvas.width = wrapper.clientWidth;
+    canvas.height = wrapper.clientHeight;
+    if(state.lines.length === 0) generatePuzzle();
+    else draw();
+}
+window.addEventListener('resize', resize);
+setTimeout(resize, 100);
+
+function setLevel(l) {
+    state.level = l;
+    document.querySelectorAll('.lvl-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-lvl${l}`).classList.add('active');
+    updateSidebarVisibility(); 
+    generatePuzzle();
+}
+
+function updateSidebarVisibility() {
+    const isoRules = document.querySelectorAll('.iso-rule');
+    const circleCat = document.getElementById('cat-circle');
+    
+    if (state.level === 1) {
+        isoRules.forEach(el => el.classList.add('hidden'));
+        circleCat.classList.add('hidden');
+        document.getElementById('c4').classList.remove('show');
+    }
+    else if (state.level === 2) {
+        isoRules.forEach(el => el.classList.remove('hidden'));
+        circleCat.classList.add('hidden');
+        document.getElementById('c4').classList.remove('show');
+    }
+    else if (state.level === 3) {
+        isoRules.forEach(el => el.classList.add('hidden'));
+        circleCat.classList.remove('hidden');
+    }
+}
+updateSidebarVisibility();
+
+function generatePuzzle() {
+    modal.style.display = 'none';
+    certView.style.display = 'none';
+    canvas.style.display = 'block';
+    nameInput.value = "";
+    resetState();
+    
+    const W = canvas.width, H = canvas.height;
+    const box = { x: MARGIN, y: MARGIN, w: W-MARGIN*2, h: H-MARGIN*2 };
+    box.r = box.x + box.w; box.b = box.y + box.h;
+    state.rect = box;
+
+    const top = {p1:{x:0,y:box.y}, p2:{x:9999,y:box.y}, id:'top', type:'edge'};
+    const bot = {p1:{x:0,y:box.b}, p2:{x:9999,y:box.b}, id:'bot', type:'edge'};
+    const left = {p1:{x:box.x,y:0}, p2:{x:box.x,y:9999}, id:'left', type:'edge'};
+    const right = {p1:{x:box.r,y:0}, p2:{x:box.r,y:9999}, id:'right', type:'edge'};
+
+    let success = false, attempts = 0;
+    while(!success && attempts < 200) {
+        attempts++;
+        state.isoData = null; state.circleData = null; state.subType = '';
+        let internalLines = [];
+
+        try {
+            const baseRot = Math.random() * Math.PI; 
+            
+            if(state.level === 1) {
+                const roll = Math.random();
+                if(roll < 0.33) {
+                    state.subType = 'separate';
+                    internalLines = [
+                        randomLine(box,"L1", baseRot), 
+                        randomLine(box,"L2", baseRot), 
+                        randomLine(box,"L3", baseRot)
+                    ];
+                    if(intersectsInside(internalLines, box)) throw "Int";
+                } 
+                else if(roll < 0.66) {
+                    state.subType = 'intersect';
+                    const flip = Math.random() > 0.5;
+                    const zoneGap = 60;
+                    const z1w = (box.w - zoneGap) * 0.5;
+                    const z1 = { x: box.x, y: box.y, w: z1w, h: box.h };
+                    const z2 = { x: box.x + z1w + zoneGap, y: box.y, w: z1w, h: box.h };
+                    const intZone = flip ? z2 : z1;
+                    const sepZone = flip ? z1 : z2;
+
+                    const ip = {
+                        x: intZone.x + intZone.w * (0.3 + Math.random()*0.4),
+                        y: intZone.y + intZone.h * (0.3 + Math.random()*0.4)
+                    };
+                    const a1 = Math.random() * Math.PI;
+                    const a2 = a1 + 0.5 + Math.random();
+                    const len = 2000;
+                    const L1 = { p1:{x:ip.x-Math.cos(a1)*len, y:ip.y-Math.sin(a1)*len}, p2:{x:ip.x+Math.cos(a1)*len, y:ip.y+Math.sin(a1)*len}, id:'L1', type:'trans' };
+                    const L2 = { p1:{x:ip.x-Math.cos(a2)*len, y:ip.y-Math.sin(a2)*len}, p2:{x:ip.x+Math.cos(a2)*len, y:ip.y+Math.sin(a2)*len}, id:'L2', type:'trans' };
+
+                    const sepCenter = { x: sepZone.x + sepZone.w*0.5, y: sepZone.y + sepZone.h*0.5 };
+                    const sepAng = Math.PI/2 + (Math.random()-0.5)*1.5; 
+                    const L3 = { p1:{x:sepCenter.x-Math.cos(sepAng)*len, y:sepCenter.y-Math.sin(sepAng)*len}, p2:{x:sepCenter.x+Math.cos(sepAng)*len, y:sepCenter.y+Math.sin(sepAng)*len}, id:'L3', type:'trans' };
+                    internalLines = [L1, L2, L3];
+                    if(getIntersect(L3, L1) && isInside(getIntersect(L3, L1))) throw "L3 Int";
+                    if(getIntersect(L3, L2) && isInside(getIntersect(L3, L2))) throw "L3 Int";
+                } 
+                else {
+                    state.subType = 'triangle';
+                    const p1 = {x:box.x+box.w*(0.2+Math.random()*0.6), y:box.y+box.h*(0.1+Math.random()*0.3)};
+                    const p2 = {x:box.x+box.w*(0.6+Math.random()*0.3), y:box.y+box.h*(0.4+Math.random()*0.4)};
+                    const p3 = {x:box.x+box.w*(0.1+Math.random()*0.4), y:box.y+box.h*(0.6+Math.random()*0.3)};
+                    internalLines = [
+                        makeLine(p1,p2,"L1",box), makeLine(p2,p3,"L2",box), makeLine(p3,p1,"L3",box)
+                    ];
+                }
+            }
+            else if (state.level === 2) {
+                state.subType = 'iso';
+                let validIso = false, isoTries = 0;
+                let apex, B, C;
+                
+                while(!validIso && isoTries < 20) {
+                    isoTries++;
+                    apex = { x: box.x + box.w*(0.3+Math.random()*0.4), y: box.y + box.h*(0.3+Math.random()*0.4) };
+                    const h = box.h * (0.2 + Math.random()*0.2); 
+                    const halfBase = box.w * (0.1 + Math.random()*0.1); 
+                    const rot = Math.random() * Math.PI * 2;
+                    
+                    const mx = apex.x + Math.cos(rot)*h;
+                    const my = apex.y + Math.sin(rot)*h;
+                    const bx = mx + Math.cos(rot + Math.PI/2)*halfBase;
+                    const by = my + Math.sin(rot + Math.PI/2)*halfBase;
+                    const cx = mx + Math.cos(rot - Math.PI/2)*halfBase;
+                    const cy = my + Math.sin(rot - Math.PI/2)*halfBase;
+                    
+                    const PAD = 20;
+                    if(bx > box.x+PAD && bx < box.r-PAD && by > box.y+PAD && by < box.b-PAD &&
+                       cx > box.x+PAD && cx < box.r-PAD && cy > box.y+PAD && cy < box.b-PAD) {
+                        validIso = true;
+                        B = {x: bx, y: by}; C = {x: cx, y: cy};
+                    }
+                }
+                if(!validIso) throw "IsoBounds";
+
+                internalLines = [ makeLine(apex, B, "L1", box), makeLine(apex, C, "L2", box), makeLine(B, C, "Base", box) ];
+                state.isoData = { apex, B, C };
+            }
+            else if (state.level === 3) {
+                const typeRoll = Math.random();
+                
+                if(typeRoll < 0.25) { 
+                    state.subType = 'rad_tan';
+                    const O = { x: box.x + box.w*(0.4+Math.random()*0.2), y: box.y + box.h*(0.4+Math.random()*0.2) };
+                    const r = 60 + Math.random()*40;
+                    const ang = Math.random()*Math.PI*2;
+                    const P = {x: O.x + Math.cos(ang)*r, y: O.y + Math.sin(ang)*r};
+                    const radLine = makeLine(O, P, "Rad", box);
+                    const tanLine = makeLine({x:P.x + Math.sin(ang)*50, y:P.y - Math.cos(ang)*50}, P, "Tan", box);
+                    internalLines = [ radLine, tanLine, randomLine(box,"L3", Math.random()*Math.PI) ];
+                    state.circleData = { center: O, r: r, type: 'tan' };
+                }
+                else if(typeRoll < 0.5) { 
+                    state.subType = 'semi';
+                    let O = { x: box.x + box.w*(0.2 + Math.random()*0.6), y: box.b };
+                    const maxR_Left = O.x - box.x;
+                    const maxR_Right = box.r - O.x;
+                    const maxR_Top = box.b - box.y; 
+                    const safeMaxR = Math.min(maxR_Left, maxR_Right, maxR_Top) - 20; 
+                    
+                    if(safeMaxR < 50) throw "NoRoom"; 
+                    
+                    const r = 40 + Math.random() * (safeMaxR - 40); 
+
+                    const A = {x: O.x - r, y: box.b};
+                    const B = {x: O.x + r, y: box.b};
+                    const cAng = Math.PI + 0.2 + Math.random()*(Math.PI - 0.4);
+                    const C = { x: O.x + r*Math.cos(cAng), y: O.y + r*Math.sin(cAng) };
+                    const L1 = makeLine(A, C, "AC", box);
+                    const L2 = makeLine(B, C, "BC", box);
+                    internalLines = [ L1, L2, randomLine(box, "L3", Math.random()*Math.PI) ];
+                    state.circleData = { center: O, r: r, type: 'semi' };
+                }
+                else if(typeRoll < 0.75) { 
+                    state.subType = 'cyclic';
+                    const O = { x: box.x + box.w/2, y: box.b - (40 + Math.random()*40) }; 
+                    const r = box.w*(0.35 + Math.random()*0.1);
+                    const dy = Math.abs(box.b - O.y);
+                    if(dy > r) throw "No Int";
+                    const dx = Math.sqrt(r*r - dy*dy);
+                    const A = {x: O.x - dx, y: box.b};
+                    const B = {x: O.x + dx, y: box.b};
+                    
+                    const ang1 = Math.PI + 0.2 + Math.random()*1.0; 
+                    const ang2 = ang1 + 0.5 + Math.random()*1.0; 
+                    
+                    const C = {x: O.x + r*Math.cos(ang1), y: O.y + r*Math.sin(ang1)};
+                    const D = {x: O.x + r*Math.cos(ang2), y: O.y + r*Math.sin(ang2)};
+                    
+                    const aC = -0.5 - Math.random();
+                    const aD = aC - 1.0 - Math.random();
+                    const pC = {x: O.x + r*Math.cos(aC), y:O.y + r*Math.sin(aC)};
+                    const pD = {x: O.x + r*Math.cos(aD), y:O.y + r*Math.sin(aD)};
+                    
+                    internalLines = [
+                        makeLine(A, pD, "L_AD", box), 
+                        makeLine(pD, pC, "L_DC", box), 
+                        makeLine(pC, B, "L_CB", box)  
+                    ];
+                    state.circleData = { center: O, r: r, type: 'cyclic' };
+                }
+                else { 
+                    state.subType = 'cent';
+                    const O = { x: box.x + box.w/2, y: box.b - (60 + Math.random()*40) };
+                    const r = box.w*(0.3 + Math.random()*0.1);
+                    const dy = Math.abs(box.b - O.y);
+                    const dx = Math.sqrt(r*r - dy*dy);
+                    const A = {x: O.x - dx, y: box.b};
+                    const B = {x: O.x + dx, y: box.b};
+                    
+                    const ang = -1.0 - Math.random()*1.0;
+                    const C = {x: O.x + r*Math.cos(ang), y: O.y + r*Math.sin(ang)};
+                    
+                    const L_AO = makeLine(A, {x: A.x + (O.x-A.x)*2, y: A.y + (O.y-A.y)*2}, "L_AO", box);
+                    const L_BC = makeLine(B, {x: B.x + (C.x-B.x)*2, y: B.y + (C.y-B.y)*2}, "L_BC", box);
+                    const L_OC = makeLine(O, C, "L_OC", box);
+                    
+                    internalLines = [L_AO, L_BC, L_OC];
+                    state.circleData = { center: O, r: r, type: 'cent' };
+                }
+            }
+
+            let allLines = [...internalLines, top, bot, left, right];
+            let points = calculateIntersections(internalLines, [top,bot,left,right], box);
+            
+            // STRICT SPACING CHECK
+            let spacingOk = true;
+            for(let i=0; i<points.length; i++) {
+                if(!isInside(points[i], 0.1) && points[i].type !== 'corner') continue; 
+                for(let j=i+1; j<points.length; j++) {
+                     if(!isInside(points[j], 0.1) && points[j].type !== 'corner') continue;
+                     const d = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
+                     if(d < 60) { spacingOk = false; break; }
+                }
+                if(!spacingOk) break;
+            }
+            
+            if(spacingOk) {
+                state.lines = allLines;
+                createIntersections(points);
+                if(state.level===2) mapIsoNodes();
+                prescribeClues(internalLines);
+                recountTreats();
+                if(state.totalTreats > 0) success = true;
+            }
+
+        } catch(e) { }
+    }
+    
+    if(!success) { setTimeout(generatePuzzle, 10); return; }
+    draw();
+    speak(state.level===3 ? "Level 3: Circle Theorems!" : (state.level===2 ? "Level 2: Isosceles" : "Level 1: Fundamentals"));
+}
+
+function intersectsInside(lines, box) {
+    for(let i=0; i<lines.length; i++) {
+        for(let j=i+1; j<lines.length; j++) {
+            const p = getIntersect(lines[i], lines[j]);
+            if(p && isInside(p)) return true;
+        }
+    }
+    return false;
+}
+
+function prescribeClues(lines) {
+    state.intersections.forEach(n => n.angles.forEach(a => a.known = false));
+    const corners = state.intersections.filter(n => n.type === 'corner');
+    const chosenCorner = corners[Math.floor(Math.random()*corners.length)];
+    if(chosenCorner && chosenCorner.angles[0]) chosenCorner.angles[0].known = true;
+
+    const edgeNodes = state.intersections.filter(n => n.type === 'edge');
+    const internalNodes = state.intersections.filter(n => n.type === 'internal');
+    const reveal = (node) => {
+        if(!node) return;
+        const avail = node.angles.filter(a => !a.known);
+        if(avail.length > 0) avail[Math.floor(Math.random()*avail.length)].known = true;
+    };
+
+    if(state.level === 1) {
+        const internalLineIds = new Set();
+        internalNodes.forEach(n => { n.lines.forEach(id => internalLineIds.add(id)); });
+        const isolatedLines = lines.filter(L => !internalLineIds.has(L.id));
+        isolatedLines.forEach(L => {
+            const en = edgeNodes.find(n => n.lines.includes(L.id));
+            reveal(en);
+        });
+
+        if(state.subType === 'intersect') {
+            const intNode = internalNodes[0];
+            if(intNode) {
+                reveal(intNode); 
+                const lIds = intNode.lines;
+                const chosenL = lIds[Math.floor(Math.random()*lIds.length)];
+                const en = edgeNodes.find(n => n.lines.includes(chosenL));
+                reveal(en);
+            }
+        }
+        else if(state.subType === 'triangle') {
+            const verts = internalNodes;
+            if(verts.length >= 2) { reveal(verts[0]); reveal(verts[1]); }
+            const anyEdge = edgeNodes[Math.floor(Math.random()*edgeNodes.length)];
+            reveal(anyEdge);
+        }
+    }
+    else if(state.level === 2) {
+        const isoVerts = [state.isoData.nodeA, state.isoData.nodeB, state.isoData.nodeC];
+        reveal(isoVerts[Math.floor(Math.random()*isoVerts.length)]);
+        const anyEdge = edgeNodes[Math.floor(Math.random()*edgeNodes.length)];
+        reveal(anyEdge);
+    }
+    else if(state.level === 3) {
+        if(state.subType === 'rad_tan') {
+            const relevant = edgeNodes.filter(n => n.lines.some(id => id==='Rad' || id==='Tan'));
+            if(relevant.length) reveal(relevant[0]);
+            const l3 = edgeNodes.filter(n => n.lines.some(id => id==='L3'));
+            if(l3.length) reveal(l3[0]);
+        }
+        else if(state.subType === 'semi') {
+            const semiEdges = edgeNodes.filter(n => n.lines.some(id => id==='AC' || id==='BC'));
+            if(semiEdges.length) reveal(semiEdges[0]);
+            const l3 = edgeNodes.filter(n => n.lines.some(id => id==='L3'));
+            if(l3.length) reveal(l3[0]);
+        }
+        else if(state.subType === 'cyclic') {
+            const nodeA = edgeNodes.find(n => n.lines.includes('L_AD'));
+            const nodeB = edgeNodes.find(n => n.lines.includes('L_CB'));
+            reveal(nodeA); reveal(nodeB);
+        }
+        else if(state.subType === 'cent') {
+            const aoNodes = edgeNodes.filter(n => n.lines.includes('L_AO'));
+            const notA = aoNodes.find(n => Math.abs(n.y - state.rect.b) > 5);
+            reveal(notA);
+            const bcNodes = edgeNodes.filter(n => n.lines.includes('L_BC'));
+            const notB = bcNodes.find(n => Math.abs(n.y - state.rect.b) > 5);
+            reveal(notB);
+        }
+    }
+}
+
+function recountTreats() {
+    state.totalTreats = 0;
+    state.collected = 0;
+    state.intersections.forEach(n => {
+        if(n.type === 'corner' || isInside(n, 0.1)) {
+            n.angles.forEach(a => { if(!a.known) state.totalTreats++; });
+        }
+    });
+    updateScore();
+}
+
+function makeLine(p1, p2, id, box) {
+    const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    const len = 3000; 
+    return {
+        p1: { x: p1.x - Math.cos(ang)*len, y: p1.y - Math.sin(ang)*len },
+        p2: { x: p1.x + Math.cos(ang)*len, y: p1.y + Math.sin(ang)*len },
+        id: id, type: 'trans'
+    };
+}
+function randomLine(box, id, biasAngle = 0) {
+    if(biasAngle !== undefined) {
+         const cx = box.x + box.w*0.5 + (Math.random()-0.5)*box.w*0.5;
+         const cy = box.y + box.h*0.5 + (Math.random()-0.5)*box.h*0.5;
+         const angle = biasAngle + (Math.random()-0.5)*0.5; 
+         const len = 2000;
+         return {
+            p1: { x: cx - Math.cos(angle)*len, y: cy - Math.sin(angle)*len },
+            p2: { x: cx + Math.cos(angle)*len, y: cy + Math.sin(angle)*len },
+            id: id, type:'trans'
+         };
+    }
+    const r1 = Math.random(), r2 = Math.random();
+    const p1 = { x: box.x + (Math.random() > 0.5 ? 0 : box.w), y: box.y + r1*box.h };
+    const p2 = { x: box.x + r2*box.w, y: box.y + (Math.random() > 0.5 ? 0 : box.h) };
+    return makeLine(p1, p2, id, box);
+}
+function calculateIntersections(internal, edges, box) {
+    let points = [];
+    for(let i=0; i<internal.length; i++) {
+        for(let j=i+1; j<internal.length; j++) {
+            const pt = getIntersect(internal[i], internal[j]);
+            if(pt && isInside(pt)) points.push({...pt, type:'internal', l1:internal[i], l2:internal[j]});
+        }
+    }
+    internal.forEach(L => {
+        edges.forEach(E => {
+            const pt = getIntersect(L, E);
+            if(pt && isInside(pt, 1)) points.push({...pt, type:'edge', l1:L, l2:E});
+        });
+    });
+    points.push({x:box.x, y:box.y, type:'corner', cid:'TL', l1:edges[0], l2:edges[2]});
+    points.push({x:box.r, y:box.y, type:'corner', cid:'TR', l1:edges[0], l2:edges[3]});
+    points.push({x:box.x, y:box.b, type:'corner', cid:'BL', l1:edges[1], l2:edges[2]});
+    points.push({x:box.r, y:box.b, type:'corner', cid:'BR', l1:edges[1], l2:edges[3]});
+    return points;
+}
+
+function mapIsoNodes() {
+    const findClosest = (pt) => {
+        let minD = 999, match = null;
+        state.intersections.forEach(n => {
+            const d = Math.hypot(n.x - pt.x, n.y - pt.y);
+            if(d < 15 && d < minD) { minD = d; match = n; }
+        });
+        return match;
+    };
+    state.isoData.nodeA = findClosest(state.isoData.apex);
+    state.isoData.nodeB = findClosest(state.isoData.B);
+    state.isoData.nodeC = findClosest(state.isoData.C);
+}
+
+function createIntersections(points) {
+    state.intersections = [];
+    points.forEach(pt => {
+        if(!isInside(pt, 0.1) && pt.type !== 'corner') return; 
+        
+        const node = { x: pt.x, y: pt.y, type: pt.type, lines: [pt.l1.id, pt.l2.id], angles: [] };
+        
+        if(pt.type === 'corner') {
+            let start = 0;
+            if(pt.cid === 'TL') start = 0;
+            else if(pt.cid === 'TR') start = Math.PI/2;
+            else if(pt.cid === 'BR') start = Math.PI;
+            else if(pt.cid === 'BL') start = Math.PI*1.5;
+            
+            const mid = start + Math.PI/4;
+            node.angles.push({
+                start: start, end: start + Math.PI/2, mid: mid, val: 90,
+                known: false, parent: node
+            });
+        } else {
+            let lineAngles = [];
+            [pt.l1, pt.l2].forEach(l => {
+                const ang = Math.atan2(l.p2.y - l.p1.y, l.p2.x - l.p1.x);
+                lineAngles.push(ang); lineAngles.push(ang + Math.PI);
+            });
+            lineAngles = lineAngles.map(a => (a + Math.PI*4) % (Math.PI*2)).sort((a,b)=>a-b);
+            
+            for(let i=0; i<lineAngles.length; i++) {
+                const s = lineAngles[i]; const e = lineAngles[(i+1)%lineAngles.length];
+                let diff = e - s; if(diff < 0) diff += Math.PI*2;
+                const mid = s + diff/2;
+                
+                const checkPt = {x: pt.x + Math.cos(mid)*5, y: pt.y + Math.sin(mid)*5};
+                if(isInside(checkPt, 0.1)) {
+                    node.angles.push({
+                        start: s, end: e, mid: mid, val: Math.round(diff * 180/Math.PI),
+                        known: false, parent: node
+                    });
+                }
+            }
+        }
+        state.intersections.push(node);
+    });
+}
+
+function checkLogic() {
+    const { target, rule, evidence } = state.selection;
+    if(evidence.length === 0 && !['rad_tan', 'semicircle', 'cyclic'].includes(rule)) return; 
+    
+    let valid = false, msg = "";
+    let mathStr = "";
+    const sumEv = evidence.reduce((acc, cur) => acc + cur.val, 0);
+    const sumTotal = sumEv + target.val;
+    const TOL = 5;
+
+    // Helper to list all subtractions for clarity (e.g., 180 - 30 - 40)
+    const listSubtractions = (total) => {
+        let s = `${total}°`;
+        evidence.forEach(e => s += ` - ${e.val}°`);
+        return s + ` = ${target.val}°`;
+    };
+
+    if(rule === 'center_circ' && state.level === 3) {
+        const centerDist = Math.hypot(target.parent.x - state.circleData.center.x, target.parent.y - state.circleData.center.y);
+        const isTargetCenter = (centerDist < 5);
+        if(isTargetCenter) {
+            const circAngles = evidence.filter(a => Math.abs(Math.hypot(a.parent.x-state.circleData.center.x, a.parent.y-state.circleData.center.y) - state.circleData.r) < 5);
+            if(circAngles.length === 1) {
+                const cVal = circAngles[0].val;
+                const oVal = target.val + evidence.filter(a=>a!=circAngles[0]).reduce((s,a)=>s+a.val,0);
+                if(Math.abs(oVal - 2*cVal) < TOL) { valid = true; mathStr = `Center (${oVal}°) = 2 × Circ (${cVal}°)`; }
+            }
+        } else {
+             const oVal = sumEv;
+             if(Math.abs(oVal - 2*target.val) < TOL) { valid = true; mathStr = `Center (${oVal}°) = 2 × Circ (${target.val}°)`; }
+        }
+    }
+    else {
+        if (rule === 'rad_tan') {
+            if (target.val === 90) { valid = true; mathStr = "Radius ⊥ Tangent = 90°"; }
+        }
+        else if (rule === 'semicircle') {
+            const d = Math.hypot(target.parent.x - state.circleData.center.x, target.parent.y - state.circleData.center.y);
+            if (Math.abs(d - state.circleData.r) < 5 && target.val === 90) { valid = true; mathStr = "Angle in Semicircle = 90°"; }
+        }
+        else if (rule === 'cyclic') {
+            if (Math.abs(sumTotal - 180) < TOL) { valid = true; mathStr = listSubtractions(180); }
+        }
+        else if (rule === 'iso_base') {
+            if(state.level===2 && evidence.length===1 && Math.abs(target.val - evidence[0].val) < TOL) {
+                valid = true; mathStr = `Iso Base: ${evidence[0].val}° = ${target.val}°`;
+            }
+        }
+        else if (rule === 'iso_apex') {
+            if(state.level===2 && evidence.length===1) {
+                const calc = (180 - evidence[0].val) / 2;
+                if(Math.abs(calc - target.val) < TOL) { 
+                    valid = true; 
+                    // Detailed steps for apex
+                    const rem = 180 - evidence[0].val;
+                    mathStr = `180° - ${evidence[0].val}° = ${rem}°;  ${rem}° ÷ 2 = ${target.val}°`; 
+                }
+            }
+        }
+        else if (rule === 'vert') {
+            if(evidence.length === 1 && Math.abs(evidence[0].val - target.val) < TOL) { valid = true; mathStr = `Vert Opp: ${evidence[0].val}° = ${target.val}°`; }
+        }
+        else if (['corr', 'alt'].includes(rule)) {
+             if(evidence.length === 1 && Math.abs(target.val - evidence[0].val) < TOL) { valid = true; mathStr = `${rule==='corr'?'Corr':'Alt'}: ${evidence[0].val}° = ${target.val}°`; }
+        }
+        else if (rule === 'line') {
+            if (Math.abs(sumTotal - 180) < TOL) { valid = true; mathStr = listSubtractions(180); }
+        }
+        else if (rule === 'point') {
+             if (Math.abs(sumTotal - 360) < TOL) { valid = true; mathStr = listSubtractions(360); }
+        }
+        else if (rule === 'coint') {
+             if (Math.abs(sumTotal - 180) < TOL) { valid = true; mathStr = listSubtractions(180); }
+        }
+        else if (['tri', 'quad', 'poly'].includes(rule)) {
+            let n = (rule==='tri')?3:(rule==='quad')?4:(parseInt(document.getElementById('poly-n').value)||3);
+            let sum = (n-2)*180;
+            if (Math.abs(sumTotal - sum) < TOL+2) { valid = true; mathStr = listSubtractions(sum); }
+        }
+    }
+
+    if (valid) {
+        solve(target, rule, evidence, mathStr);
+    }
+}
+
+function solve(target, rule, evidence, mathStr) {
+    state.locked = true; 
+    wrapper.classList.add('locked');
+    speak(mathStr);
+    draw(); 
+    setTimeout(() => {
+        target.known = true;
+        state.collected++;
+        updateScore();
+        state.selection = { target: null, rule: null, evidence: [] };
+        state.locked = false; 
+        wrapper.classList.remove('locked');
+        draw();
+        if(state.collected >= state.totalTreats) {
+            state.gameActive = false;
+            setTimeout(() => { modal.style.display = 'flex'; speak("Level Complete!"); nameInput.focus(); }, 1000);
+        }
+    }, 2000); // Increased slightly so user can read the longer math string
+}
+
+function resetState() {
+    state.selection = { target: null, rule: null, evidence: [] };
+    state.locked = false;
+    state.lines = []; state.intersections = [];
+    state.gameActive = true; state.collected = 0;
+    wrapper.classList.remove('locked');
+}
+function resetPuzzle() {
+    state.selection = { target: null, rule: null, evidence: [] };
+    state.locked = false;
+    wrapper.classList.remove('locked');
+    updateUI(); draw();
+}
+
+function draw() {
+    ctx.clearRect(0,0, canvas.width, canvas.height);
+    const box = state.rect;
+
+    if(state.level === 3 && state.circleData) {
+        ctx.beginPath();
+        ctx.arc(state.circleData.center.x, state.circleData.center.y, state.circleData.r, 0, Math.PI*2);
+        ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(state.circleData.center.x, state.circleData.center.y, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillText("O", state.circleData.center.x+8, state.circleData.center.y-8);
+    }
+
+    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 4; ctx.strokeRect(box.x, box.y, box.w, box.h);
+    drawArrow(box.x + box.w/2, box.y, 0, 1); drawArrow(box.x + box.w/2, box.b, 0, 1);
+    drawArrow(box.x, box.y + box.h/2, Math.PI/2, 2); drawArrow(box.r, box.y + box.h/2, Math.PI/2, 2);
+    
+    ctx.lineWidth = 2; ctx.strokeStyle = '#7f8c8d';
+    state.intersections.forEach(node => {
+        if(node.type !== 'corner') {
+            node.angles.forEach(a => {
+                ctx.beginPath(); ctx.moveTo(node.x, node.y);
+                ctx.lineTo(node.x + Math.cos(a.start)*800, node.y + Math.sin(a.start)*800); ctx.stroke();
+            });
+        }
+    });
+
+    if(state.level === 2 && state.isoData && state.isoData.nodeA) {
+        drawTickMark(state.isoData.nodeA, state.isoData.nodeB);
+        drawTickMark(state.isoData.nodeA, state.isoData.nodeC);
+    }
+
+    // Mask Outside
+    ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+    ctx.fillRect(0,0, canvas.width, box.y); ctx.fillRect(0,box.b, canvas.width, canvas.height-box.b);
+    ctx.fillRect(0,0, box.x, canvas.height); ctx.fillRect(box.r,0, canvas.width-box.r, canvas.height);
+    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 4; ctx.strokeRect(box.x, box.y, box.w, box.h);
+
+    // Draw Angles
+    state.intersections.forEach(node => {
+        if(node.type !== 'corner' && !isInside(node, 0.1)) return;
+
+        node.angles.forEach(a => {
+            const r = 30; 
+            ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.arc(node.x, node.y, r, a.start, a.end); ctx.lineTo(node.x, node.y);
+            let fill = '#ecf0f1', stroke = '#bdc3c7';
+            
+            if(state.selection.target === a) { fill = '#e74c3c'; stroke = '#c0392b'; }
+            if(state.selection.evidence.includes(a)) { fill = '#2ecc71'; stroke = '#27ae60'; }
+            
+            ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = stroke; ctx.stroke();
+            
+            const tx = node.x + Math.cos(a.mid)*(r*0.7), ty = node.y + Math.sin(a.mid)*(r*0.7);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#2c3e50';
+            
+            if(a.known) { ctx.font = "bold 12px sans-serif"; ctx.fillText(a.val + "°", tx, ty); }
+            else { ctx.font = "14px sans-serif"; ctx.fillText("🌰", tx, ty+1); }
+        });
+    });
+}
+
+function drawArrow(x, y, rot, count) {
+    ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle='#2c3e50';
+    if(count===1) { ctx.beginPath(); ctx.moveTo(-6,-6); ctx.lineTo(6,0); ctx.lineTo(-6,6); ctx.fill(); }
+    else { ctx.beginPath(); ctx.moveTo(-8,-6); ctx.lineTo(4,0); ctx.lineTo(-8,6); ctx.fill();
+           ctx.beginPath(); ctx.moveTo(-2,-6); ctx.lineTo(10,0); ctx.lineTo(-2,6); ctx.fill(); }
+    ctx.restore();
+}
+function drawTickMark(n1, n2) {
+    if(!n1 || !n2) return;
+    const mx = (n1.x + n2.x)/2, my = (n1.y + n2.y)/2;
+    const ang = Math.atan2(n2.y - n1.y, n2.x - n1.x);
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.strokeStyle = '#d35400'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-3, -8); ctx.lineTo(-3, 8); ctx.moveTo(3, -8); ctx.lineTo(3, 8); ctx.stroke(); ctx.restore();
+}
+function isInside(p, tol=-0.1) { return p.x > state.rect.x-tol && p.x < state.rect.r+tol && p.y > state.rect.y-tol && p.y < state.rect.b+tol; }
+function getIntersect(l1, l2) {
+    const A=l1.p1, B=l1.p2, C=l2.p1, D=l2.p2;
+    const d = (A.x-B.x)*(C.y-D.y) - (A.y-B.y)*(C.x-D.x);
+    if(d==0) return null;
+    const t = ((A.x-C.x)*(C.y-D.y)-(A.y-C.y)*(C.x-D.x))/d;
+    return {x: A.x+t*(B.x-A.x), y: A.y+t*(B.y-A.y)};
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    if(state.locked || !state.gameActive) return;
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    let clicked = null;
+    state.intersections.forEach(node => {
+        if(node.type !== 'corner' && !isInside(node, 0.1)) return;
+        if(Math.hypot(node.x-mx, node.y-my) < 40) {
+            const ang = (Math.atan2(my-node.y, mx-node.x) + Math.PI*2) % (Math.PI*2);
+            node.angles.forEach(a => {
+                let hit = (a.start < a.end) ? (ang >= a.start && ang <= a.end) : (ang >= a.start || ang <= a.end);
+                if(hit) clicked = a;
+            });
+        }
+    });
+    if(clicked) handleAngleClick(clicked);
+    else if(state.selection.target) {
+        state.selection = { target: null, rule: null, evidence: [] };
+        updateUI(); draw(); speak("Selection cleared.");
+    }
+});
+
+function handleAngleClick(a) {
+    const sel = state.selection;
+    if(sel.target === a) { sel.target = null; sel.evidence = []; sel.rule = null; updateUI(); draw(); return; }
+    if(!sel.rule) {
+        if(a.known) { speak("Find an unknown Nut (🌰)!"); return; }
+        sel.target = a; sel.evidence = []; speak("Target Selected. Choose a Rule!"); updateUI();
+    } else {
+        if(!a.known && sel.rule !== 'semicircle' && sel.rule !== 'rad_tan' && sel.rule !== 'center_circ') {
+             if(!a.known) { speak("Inputs must be known (Green)!"); shakeCanvas(); return; }
+        }
+        const idx = sel.evidence.indexOf(a);
+        if(idx > -1) sel.evidence.splice(idx, 1); else sel.evidence.push(a);
+        checkLogic();
+    }
+    draw();
+}
+function updateUI() {
+    document.querySelectorAll('.rule-btn').forEach(b=>b.classList.remove('selected'));
+    polyConfig.classList.remove('show');
+    if(state.selection.rule) {
+        const btn = Array.from(document.querySelectorAll('.rule-btn')).find(b => b.onclick.toString().includes(state.selection.rule));
+        if(btn) btn.classList.add('selected');
+        if(state.selection.rule === 'poly') polyConfig.classList.add('show');
+    }
+}
+function updateScore() { scoreDisplay.innerText = `${state.collected} / ${state.totalTreats} 🌰`; }
+function setRule(r) {
+    if(state.locked) return;
+    if(!state.selection.target) { speak("Select a Nut first!"); shakeCanvas(); return; }
+    state.selection.rule = r; state.selection.evidence = [];
+    speak(RULE_TEXT[r] || "Rule selected.");
+    updateUI();
+    checkLogic();
+}
+function toggleCat(id) {
+    document.querySelectorAll('.rule-container').forEach(e=>e.classList.remove('show'));
+    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('show');
+    event.target.classList.add('active');
+}
+function shakeCanvas() { wrapper.classList.remove('shake'); void wrapper.offsetWidth; wrapper.classList.add('shake'); }
+function speak(txt) { bubble.innerText = txt; }
+function claimCertificate() {
+    if(state.gameActive) return;
+    const name = nameInput.value.trim();
+    if(!name) { alert("Enter Name!"); return; }
+    modal.style.display = 'none'; canvas.style.display = 'none'; certView.style.display = 'flex';
+    document.getElementById('cert-name-display').innerText = name;
+    document.getElementById('cert-treats').innerText = state.totalTreats;
+    document.getElementById('cert-level').innerText = "Level " + state.level;
+    document.getElementById('cert-date').innerText = "Date: " + new Date().toLocaleDateString();
+
+    let sText = "Basic angle rules<br>Angles on parallel lines<br>Angle sum in polygons";
+    if(state.level >= 2) sText += "<br>Base angle theorem";
+    if(state.level >= 3) sText += "<br>Circle theorems";
+    document.getElementById('cert-skills').innerHTML = sText;
+}
+</script>
+</body>
+</html>
