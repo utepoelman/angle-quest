@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nugget's Angle Quest: V38 Detailed Steps</title>
+    <title>Nugget's Angle Quest: V39</title>
     <style>
         :root {
             --bg-color: #f7f1e3;
@@ -26,11 +26,39 @@
             user-select: none;
         }
 
-        #header { width: 100%; max-width: 1100px; display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        /* UPDATED HEADER LAYOUT */
+        #header { 
+            width: 100%; 
+            max-width: 1100px; 
+            display: grid; 
+            grid-template-columns: 1fr 300px; /* Matches Game Layout */
+            gap: 20px; 
+            align-items: center; 
+            margin-bottom: 10px; 
+        }
         h1 { margin: 0; color: var(--wood); font-size: 1.6rem; }
 
-        .level-select { display: flex; gap: 5px; background: white; padding: 5px; border-radius: 8px; border: 2px solid var(--wood); }
-        .lvl-btn { border: none; background: transparent; padding: 5px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; color: #7f8c8d; }
+        .level-select { 
+            display: flex; 
+            gap: 5px; 
+            background: white; 
+            padding: 5px; 
+            border-radius: 8px; 
+            border: 2px solid var(--wood); 
+            box-sizing: border-box;
+            width: 100%; /* Fill the 300px column */
+            justify-content: space-between;
+        }
+        .lvl-btn { 
+            border: none; 
+            background: transparent; 
+            padding: 5px 0; /* Adjusted padding for space */
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 4px; 
+            color: #7f8c8d; 
+            flex: 1; /* Distribute evenly */
+        }
         .lvl-btn.active { background: var(--accent); color: white; }
 
         #game-layout {
@@ -292,7 +320,7 @@
     </div>
 
 <script>
-/** NUGGET ENGINE V38 - DETAILED MATH STEPS */
+/** NUGGET ENGINE V39 - LAYOUT & RESET LOGIC */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const bubble = document.getElementById('msg-bubble');
@@ -605,17 +633,24 @@ function intersectsInside(lines, box) {
 }
 
 function prescribeClues(lines) {
-    state.intersections.forEach(n => n.angles.forEach(a => a.known = false));
+    state.intersections.forEach(n => n.angles.forEach(a => { a.known = false; a.isGiven = false; }));
     const corners = state.intersections.filter(n => n.type === 'corner');
     const chosenCorner = corners[Math.floor(Math.random()*corners.length)];
-    if(chosenCorner && chosenCorner.angles[0]) chosenCorner.angles[0].known = true;
+    if(chosenCorner && chosenCorner.angles[0]) {
+        chosenCorner.angles[0].known = true;
+        chosenCorner.angles[0].isGiven = true;
+    }
 
     const edgeNodes = state.intersections.filter(n => n.type === 'edge');
     const internalNodes = state.intersections.filter(n => n.type === 'internal');
     const reveal = (node) => {
         if(!node) return;
         const avail = node.angles.filter(a => !a.known);
-        if(avail.length > 0) avail[Math.floor(Math.random()*avail.length)].known = true;
+        if(avail.length > 0) {
+            const chosen = avail[Math.floor(Math.random()*avail.length)];
+            chosen.known = true;
+            chosen.isGiven = true;
+        }
     };
 
     if(state.level === 1) {
@@ -849,7 +884,6 @@ function checkLogic() {
                 const calc = (180 - evidence[0].val) / 2;
                 if(Math.abs(calc - target.val) < TOL) { 
                     valid = true; 
-                    // Detailed steps for apex
                     const rem = 180 - evidence[0].val;
                     mathStr = `180° - ${evidence[0].val}° = ${rem}°;  ${rem}° ÷ 2 = ${target.val}°`; 
                 }
@@ -899,7 +933,7 @@ function solve(target, rule, evidence, mathStr) {
             state.gameActive = false;
             setTimeout(() => { modal.style.display = 'flex'; speak("Level Complete!"); nameInput.focus(); }, 1000);
         }
-    }, 2000); // Increased slightly so user can read the longer math string
+    }, 2000); 
 }
 
 function resetState() {
@@ -910,10 +944,26 @@ function resetState() {
     wrapper.classList.remove('locked');
 }
 function resetPuzzle() {
+    // RESTART SAME LEVEL LOGIC
     state.selection = { target: null, rule: null, evidence: [] };
     state.locked = false;
+    state.collected = 0;
+    state.gameActive = true;
     wrapper.classList.remove('locked');
-    updateUI(); draw();
+    
+    // Reset angle statuses
+    state.intersections.forEach(n => {
+        n.angles.forEach(a => {
+            // Keep given angles, hide found ones
+            if(a.isGiven) a.known = true;
+            else a.known = false; 
+        });
+    });
+    
+    updateScore();
+    speak("Puzzle Restarted!");
+    updateUI(); 
+    draw();
 }
 
 function draw() {
